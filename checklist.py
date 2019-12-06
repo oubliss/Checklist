@@ -9,21 +9,19 @@ University of Oklahoma
 '''
 
 import os
+import sys
 import csv
 import datetime as dt
 from datetime import datetime
 from contextlib import suppress
 import numpy as np
 import pickle
-
-
-class ExitException(BaseException):
-    def __init__(self):
-        return
+from utils import UI, ExitException
+from admin import Admin
 
 
 # noinspection SpellCheckingInspection
-class make_log:
+class Checklist(UI):
 
     def __init__(self):
         #
@@ -38,7 +36,8 @@ class make_log:
         self.localNextcloud = True
         self.user = os.path.expanduser("~")
         self.dt_now = datetime.now(tz=dt.timezone(dt.timedelta(hours=0)))
-        self.dt_today = datetime(day=self.dt_now.day, month=self.dt_now.month, year=self.dt_now.year)
+        self.dt_today = datetime(day=self.dt_now.day, month=self.dt_now.month,
+                                 year=self.dt_now.year)
         try:
             self.log_dir = os.path.join(self.user, "Nextcloud", "Logs")
             if not os.path.exists(self.log_dir):
@@ -53,17 +52,21 @@ class make_log:
         #
         # Directions
         #
-        print("Answer all questions without commas. \nTo go back, enter \"!\"")
+        print("Answer all questions without commas. \nTo go back, enter \"!\"\n"
+              "To enter admin mode, set the operator's name to \"admin\"")
 
 
         #
         # Define to-do list to track progress, allow to go back
         #
-        self.to_do = ["operator", "platform", "find_header", "location", "flight_pattern", "objective", "legal",
-                      "scoop", "weather", "planned_alt", "preflight_checks", "start_info", "end_info", "emergency",
+        self.to_do = ["operator", "platform", "find_header", "location",
+                      "flight_pattern", "objective", "legal",
+                      "scoop", "weather", "planned_alt", "preflight_checks",
+                      "start_info", "end_info", "emergency",
                       "postflight_checks", "comment", "nextcloud"]
         self.step_index = 0
-        self.overwrite = False  # if True, user MUST enter answer for ALL steps, even if the answers have previously been entered
+        self.overwrite = False  # if True, user MUST enter answer for ALL
+        # steps, even if the answers have previously been entered
 
         #
         # Hold all info gathered
@@ -75,61 +78,6 @@ class make_log:
         while self.step_index < len(self.to_do):
             with suppress(ExitException):
                 self.step()
-
-    def step(self):
-        self.__getattribute__(self.to_do[self.step_index])()
-        self.step_index += 1
-        overwrite = False
-
-    def back(self):
-        if self.step_index > 0:
-            self.step_index -= 1
-            self.overwrite = True
-
-    def update_ndict(self):
-        """ Allow user to add, remove, and change order of platforms
-
-        """
-        # TODO implement
-
-    def get_index(self, list, message=None, free_response=True):
-        """ Recursively call until valid index chosen from specified array
-        """
-        for i in range(len(list)):
-            print("\t" + str(i+1) + " - " + str(list[i]))
-        print("\t" + str(len(list)+1) + " - Other")
-        i_str = input(">> ")
-        if i_str in [str(i) for i in range(1, len(list) + 1, 1)]:
-            to_return = list[int(i_str) - 1]
-        elif i_str == str(len(list) + 1):
-            if free_response:
-                to_return = self.no_commas(message)
-            else:
-                to_return = "Other"
-        elif "!" in i_str:
-            self.back()
-            raise ExitException
-        else:
-            print("Please enter valid option")
-            to_return = self.get_index(list, message, free_response)
-        return to_return
-
-    def no_commas(self, message):
-        """ Ensure no commas input
-        """
-        print(message)
-        x = input(">> ")
-        while "," in x:
-            print("Please enter valid name with no commas")
-            x = self.no_commas(message)
-        if "!" in x:
-            self.back()
-            raise ExitException()
-        if "remarks" not in message and "Remarks" not in message:
-            while x in "":
-                print("This field is non-optional")
-                x = self.no_commas(message)
-        return x
 
     def get_time(self, date):
         time_str = input(">> ")
@@ -156,11 +104,14 @@ class make_log:
                 self.flight_info["region"] = region
             else:
                 region = self.no_commas("What region from this list are you in?"
-                      "http://cfconventions.org/Data/standardized-region-list/standardized-region-list.html")
+                      "http://cfconventions.org/Data/standardized-region-list/"
+                                        "standardized-region-list.html")
                 self.flight_info["region"]
-            long_name = self.no_commas("What is the full name of your location?")
+            long_name = self.no_commas("What is the full name of your "
+                                       "location?")
             self.flight_info["location_name"] = long_name
-            location_id = self.no_commas("What 4-5 character ID would you like to assign to " + long_name + "?")
+            location_id = self.no_commas("What 4-5 character ID would you like "
+                                         "to assign to " + long_name + "?")
             self.flight_info["location_id"] = location_id
 
         elif choice in "no" or choice in "NO" or choice in "No":
@@ -175,7 +126,8 @@ class make_log:
         self.flight_info["alt"] = alt
         choice = self.no_commas("Is there a Mesonet station nearby? [y/n]")
         if choice in "yesYesYES":
-            mesonet_id = self.no_commas("Enter the station's 4-letter identifier.")
+            mesonet_id = self.no_commas("Enter the station's 4-letter "
+                                        "identifier.")
             self.flight_info["mesonet_id"] = mesonet_id
         else:
             mesonet_id = None
@@ -184,15 +136,18 @@ class make_log:
         if write_new_loc:
             if group not in self.known_locations.keys():
                 self.known_locations[group] = {}
-            self.known_locations[group][location_id] = {"location_name": long_name, "lat": lat,
-                                                        "lon": lon, "surface_altitude": alt,
-                                                        "region": region, "mesonet_id": mesonet_id}
+            self.known_locations[group][location_id] = \
+                {"location_name": long_name, "lat": lat,
+                 "lon": lon, "surface_altitude": alt,
+                 "region": region, "mesonet_id": mesonet_id}
             pickle.dump(self.known_locations, open("known_locations.pkl", "wb"))
 
-            loc_info = {"location_name": long_name, "lat": lat, "lon": lon, "surface_altitude": alt,
+            loc_info = {"location_name": long_name, "lat": lat, "lon": lon,
+                        "surface_altitude": alt,
                         "region": region, "mesonet_id": mesonet_id}
         else:
-            loc_info = {"lat": lat, "lon": lon, "surface_altitude": alt, "mesonet_id": mesonet_id}
+            loc_info = {"lat": lat, "lon": lon, "surface_altitude": alt,
+                        "mesonet_id": mesonet_id}
 
         for key in loc_info.keys():
             self.flight_info[key] = loc_info[key]
@@ -200,7 +155,12 @@ class make_log:
 
     def operator(self):
         if "operator" not in self.flight_info or self.overwrite:
-            self.flight_info["operator"] = self.no_commas("Name of person filling out checklist: ")
+            inp = self.no_commas("Name of person filling out checklist: ")
+            if inp in "AdminadminADMIN":
+                Admin()
+                sys.exit()
+            else:
+                self.flight_info["operator"] = inp
 
     def find_header(self):
         # TODO check if overwrite
@@ -495,4 +455,4 @@ class make_log:
                       os.path.join(os.path.abspath("."), "Logs")
                       + ":\n https://10.197.13.220/s/qXjandWWu26v4hO")
 
-make_log()
+Checklist()
