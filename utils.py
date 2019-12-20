@@ -9,20 +9,19 @@ class UI:
         self.step_index = 0
         self.overwrite = False
 
-    def step(self):
-        self.__getattribute__(self.to_do[self.step_index])()
-        self.step_index += 1
-        self.overwrite = False
-
     def back(self):
         if self.step_index > 0:
             self.step_index -= 1
             self.overwrite = True
+            self.to_do.pop(-1)
             raise ExitException
 
     def get_index(self, list, message=None, free_response=True):
         """ Recursively call until valid index chosen from specified array
         """
+        if message is not None:
+            print('\n' + message)
+
         for i in range(len(list)):
             print("\t" + str(i+1) + " - " + str(list[i]))
         if free_response:

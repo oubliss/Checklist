@@ -53,7 +53,7 @@ class Checklist(UI):
         # Directions
         #
         print("Answer all questions without commas. \nTo go back, enter \"!\"\n"
-              "To enter admin mode, set the operator's name to \"admin\"")
+              "To enter admin mode, set the operator's name to \"admin\"\n")
 
 
         #
@@ -79,6 +79,11 @@ class Checklist(UI):
             with suppress(ExitException):
                 self.step()
 
+    def step(self):
+        self.__getattribute__(self.to_do[self.step_index])()
+        self.step_index += 1
+        self.overwrite = False
+
     def get_time(self, date):
         time_str = input(">> ")
         try:
@@ -103,10 +108,17 @@ class Checklist(UI):
                     [list(self.known_locations[group].keys())[0]]["region"]
                 self.flight_info["region"] = region
             else:
-                region = self.no_commas("What region from this list are you in?"
-                      "http://cfconventions.org/Data/standardized-region-list/"
-                                        "standardized-region-list.html")
-                self.flight_info["region"]
+                choice = self.no_commas("Are you in North America? [y/n]")
+                if choice in "yesYESYes":
+                    region = "north_america"
+                else:
+                    region = self.no_commas("What region from this list are you"
+                                            " in?\n"
+                                            "http://cfconventions.org/"
+                                            "Data/standardized-region-list/"
+                                            "standardized-region-list.html")
+                self.flight_info["region"] = region
+
             long_name = self.no_commas("What is the full name of your "
                                        "location?")
             self.flight_info["location_name"] = long_name
@@ -213,6 +225,9 @@ class Checklist(UI):
         print("Where are you?")
         group = self.get_index(loc_keys, "What state (US) or country are you in?")
 
+        if group not in self.known_locations.keys():
+            self.define_new_loc(group)
+
         specific_loc_keys = list(self.known_locations[group].keys())
         print("Which location?")
         location_id = self.get_index(specific_loc_keys, free_response=False)
@@ -236,7 +251,7 @@ class Checklist(UI):
         if "objective" not in self.flight_info.keys() or self.overwrite:
             print("Chose one or more of the following objectives. If\n"
                   "you chose more than one, separate them with \";\"")
-            obj_list = ["Thermo", "CO2", "O3", "Aerosol", "Photogrammetry", "Wind calibration", "Test", "Other"]
+            obj_list = pickle.load("objectives.pkl")
             for obj in obj_list:
                 print(obj)
             self.flight_info["objective"] = self.no_commas("Objective(s): ")
