@@ -1,0 +1,2 @@
+timestamp,operator,PIC,battery_id,cloud,rain,battery_voltage_initial,max_planned_alt,launch_time_utc,max_achieved_alt,land_time_utc,battery_voltage_final,emergency_landing,emergency_remarks,private_remarks,remarks
+20200107_182332,Test Operator,Test Pilot,unknown,0%,no,1234,1000,20200107_1234,n,20200107_1243,1234,n,,,

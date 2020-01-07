@@ -19,7 +19,6 @@ import pickle
 from utils import UI, ExitException
 from admin import Admin
 
-
 # noinspection SpellCheckingInspection
 class Checklist(UI):
 
@@ -27,8 +26,9 @@ class Checklist(UI):
         #
         # Load existing data
         #
-        self.ndict = pickle.load(open("ndict.pkl", "rb"))
-        self.known_locations = pickle.load(open("known_locations.pkl", "rb"))
+        self.ndict = pickle.load(open("../user_settings/ndict.pkl", "rb"))
+        self.known_locations = \
+            pickle.load(open("../user_settings/known_locations.pkl", "rb"))
 
         #
         # Get needed system info
@@ -44,7 +44,7 @@ class Checklist(UI):
                 os.mkdir(self.log_dir)
         except FileNotFoundError:
             self.localNextcloud = False
-            self.log_dir = os.path.join(".", "Logs")
+            self.log_dir = os.path.join("..", "Logs")
             if not os.path.exists(self.log_dir):
                 os.mkdir(self.log_dir)
 
@@ -152,7 +152,8 @@ class Checklist(UI):
                 {"location_name": long_name, "lat": lat,
                  "lon": lon, "surface_altitude": alt,
                  "region": region, "mesonet_id": mesonet_id}
-            pickle.dump(self.known_locations, open("known_locations.pkl", "wb"))
+            pickle.dump(self.known_locations,
+                        open("../user_settings/known_locations.pkl", "wb"))
 
             loc_info = {"location_name": long_name, "lat": lat, "lon": lon,
                         "surface_altitude": alt,
@@ -185,8 +186,10 @@ class Checklist(UI):
         else:
             self.is_first = False
         # find associated header file
-        f_read = f"{self.dt_today.strftime('%Y%m%d')}" + self.flight_info["platform_id"] + "_log_header.csv"
-        is_header = self.no_commas("Is this the correct header file? y/n\n"+f_read)
+        f_read = f"{self.dt_today.strftime('%Y%m%d')}" + \
+                 self.flight_info["platform_id"] + "_log_header.csv"
+        is_header = self.no_commas("Is this the correct header file? y/n\n"
+                                   + f_read)
         while is_header not in ["y", "n"]:
             is_header = input(">> ")
         if is_header == "y":
@@ -202,14 +205,16 @@ class Checklist(UI):
                     continue
                 break
 
-        header = np.genfromtxt(f_read_path, dtype=str, delimiter=",", skip_header=1)
+        header = np.genfromtxt(f_read_path, dtype=str, delimiter=",",
+                               skip_header=1)
         # TODO make header a dictionary accessible elsewhere
 
     def platform(self):
         """ Prompt user for platform ID
         """
         if "platform_id" not in self.flight_info.keys() or self.overwrite:
-            id = self.get_index(list(self.ndict.keys()), message="Enter aircraft N number:")
+            id = self.get_index(list(self.ndict.keys()),
+                                message="Enter aircraft N number:")
             if id in "Other":
                 self.update_ndict()
                 self.platform()
@@ -223,7 +228,8 @@ class Checklist(UI):
 
         # Find location group (state or country)
         print("Where are you?")
-        group = self.get_index(loc_keys, "What state (US) or country are you in?")
+        group = self.get_index(loc_keys,
+                               "What state (US) or country are you in?")
 
         if group not in self.known_locations.keys():
             self.define_new_loc(group)
@@ -235,56 +241,63 @@ class Checklist(UI):
             self.define_new_loc(group)
         else:
             loc_info = self.known_locations[group][location_id]
-
+            self.flight_info["location_id"] = location_id
             for key in loc_info.keys():
                 self.flight_info[key] = loc_info[key]
 
     def flight_pattern(self):
 
         if "flight_pattern" not in self.flight_info.keys() or self.overwrite:
-            pattern_list = ["Direct profile", "Helical profile", "Stair step profile",
+            pattern_list = ["Direct profile", "Helical profile",
+                            "Stair step profile",
                             "Hover", "Photogrammetry grid", "Test flight"]
-            self.flight_info["flight_pattern"] = self.get_index(pattern_list,
-                                                                message="Enter flight pattern (no commas): ")
+            self.flight_info["flight_pattern"] = \
+                self.get_index(pattern_list,
+                               message="Enter flight pattern (no commas): ")
 
     def objective(self):
         if "objective" not in self.flight_info.keys() or self.overwrite:
             print("Chose one or more of the following objectives. If\n"
                   "you chose more than one, separate them with \";\"")
-            obj_list = pickle.load("objectives.pkl")
+            obj_list = pickle.load(open("../user_settings/objectives.pkl",
+                                        "rb"))
             for obj in obj_list:
                 print(obj)
             self.flight_info["objective"] = self.no_commas("Objective(s): ")
 
     def legal(self):
-        if "authorization_type" not in self.flight_info.keys() or self.overwrite:
+        if "authorization_type" not in self.flight_info.keys() \
+                or self.overwrite:
             print("Flight permissions: ")
             per_list = ["COA", "Part 107"]
             per_name = self.get_index(per_list, free_response=False)
             self.flight_info["authorization_type"] = per_name
             if per_name == "COA":
                 self.flight_info["pilots_on_site"] = \
-                    self.no_commas("List names of all pilots on site separated by \";\"")
+                    self.no_commas("List names of all pilots on site separated "
+                                   "by \";\"")
             else:
                 self.flight_info["pilots_on_site"] = ""
-            self.flight_info["pilot_in_command"] = self.no_commas("Pilot in Command: ")
+            self.flight_info["PIC"] = self.no_commas("Pilot in Command: ")
 
     def scoop(self):
         if "scoop" not in self.flight_info.keys() or self.overwrite:
             if self.ndict[self.flight_info["platform_id"]]:
                 print("Scoop ID:")
-                self.flight_info["scoop"] = self.get_index(["A", "B", "C", "D"],
-                                                           message="Enter scoop number: ")
+                self.flight_info["scoop_id"] = \
+                    self.get_index(["A", "B", "C", "D"],
+                                   message="Enter scoop number: ")
             else:
-                self.flight_info["scoop"] = ""
+                self.flight_info["scoop_id"] = ""
 
     def weather(self):
-        if "cloud_cover" not in self.flight_info.keys() or self.overwrite:
+        if "cloud" not in self.flight_info.keys() or self.overwrite:
             print("Cloud cover: ")
             sky_list = ["0%", "1-25%", "26-50%", "51-75%", "76-100%"]
             cloud = self.get_index(sky_list, free_response=False)
             if "76-100%" in cloud:  # swapped order - 0% is in 10 0%
-                r = self.no_commas("Is it precipitating? If yes be sure to denote type in remarks. y/n")
+                r = self.no_commas("Is it precipitating? If yes be sure to "
+                                   "denote type in remarks. y/n")
                 while r not in ["y", "n"]:
                     r = input(">> ")
                 if r == "y":
@@ -293,40 +306,51 @@ class Checklist(UI):
                     rain = "no"
             else:
                 rain = "no"
-            self.flight_info["cloud_cover"] = cloud
+            self.flight_info["cloud"] = cloud
             self.flight_info["rain"] = rain
 
         if self.flight_info["mesonet_id"] == "":  # this is in locations
             self.flight_info["wind_from_direction"] = \
-                self.no_commas("What direction (in degrees) is the wind coming from?")
+                self.no_commas("What direction (in degrees) is the "
+                               "wind coming from?")
             self.flight_info["wind_speed"] = \
                 self.no_commas("What is the ambient wind speed (in m/s)?")
-            self.flight_info["wind_speed_gust"] = self.no_commas("About how fast is the wind gusting to? (in m/s)")
+            self.flight_info["wind_speed_gust"] = \
+                self.no_commas("About how fast is the wind gusting to? "
+                               "(in m/s)")
         else:
             self.flight_info["wind_from_direction"] = ""
             self.flight_info["wind_speed"] = ""
             self.flight_info["wind_speed_gust"] = ""
 
     def planned_alt(self):
-        if "planned_alt" not in self.flight_info or self.overwrite:
-            self.flight_info["planned_alt"] = self.no_commas("Planned maximum altitude: ")
+        if "max_planned_alt" not in self.flight_info or self.overwrite:
+            self.flight_info["max_planned_alt"] = self.no_commas("Planned "
+                                                                 "maximum "
+                                                                 "altitude: ")
 
     def preflight_checks(self):
         checklist = [
-            "Check for visual obstacles and potential source of interference (antennas, \n"
+            "Check for visual obstacles and potential source of "
+            "interference (antennas, \n"
                 "electrical lines, metal structures) ",
             "Clear and agree on a takeoff and landing zone ",
-            "Check current wind speed and humidity at the location, decide if it's \n"
+            "Check current wind speed and humidity at the location, decide "
+            "if it's \n"
                 "appropriate for safe flight ",
-            "Perform visual inspection of the vehicle - props not damaged, props tight, \n"
-                "center of gravity, orientation and connection of RH, GPS, data transfer \n"
+            "Perform visual inspection of the vehicle - props not damaged, "
+            "props tight, \n"
+                "center of gravity, orientation and connection of RH, GPS, "
+            "data transfer \n"
                 "antennas, mechanical check ",
             "Check Mission planner laptop battery charge ",
             "Confirm mission planner running ",
             "Connect ground station RF to laptop ",
             "Turn on controller and check voltage ",
-            "Plug in the UAV's battery and let it boot up stationary for 20 seconds ",
-            "Connect telemetry (baud 57600, select serial link, confirm heartbeat) ",
+            "Plug in the UAV's battery and let it boot up stationary for 20 "
+            "seconds ",
+            "Connect telemetry (baud 57600, select serial link, confirm "
+            "heartbeat) ",
             "Confirm no error messages with mission planner ",
             "Confirm GPS fix type (outdoors must get 3D fix) ",
             "Check data logging ",
@@ -337,8 +361,10 @@ class Checklist(UI):
             "Review flight plan - verbal and on mission planner",
             "Test audio communications among participants",
             "Check if all participants ready for flight",
-            "Press the safety button on the vehicle until solid red - now live and armed",
-            "Check the LED for status of the vehicle. Should see a blinking green light indicating GPS lock",
+            "Press the safety button on the vehicle until solid red - now "
+            "live and armed",
+            "Check the LED for status of the vehicle. Should see a blinking "
+            "green light indicating GPS lock",
             "Arm motors and call clear prop"
         ]
         for i in range(len(checklist)):
@@ -352,43 +378,57 @@ class Checklist(UI):
         # launch time, battery num, voltage
         if "launch_time" not in self.flight_info.keys() or self.overwrite:
 
-            self.flight_info["battery_id"] = self.no_commas("Battery number (enter unknown if unknown)")
+            self.flight_info["battery_id"] = \
+                self.no_commas("Battery number (enter unknown if unknown)")
             self.flight_info["battery_voltage_initial"] = self.no_commas(
-                "Battery voltage: Enter only the battery voltage in volts without units.")
+                "Battery voltage: Enter only the battery voltage in volts "
+                "without units.")
             print("Enter takeoff time as 24-hr UTC HHMM")
             self.flight_info["launch_time_utc"] = self.get_time(self.dt_today)
 
     def end_info(self):
         if "max_achieved_alt" not in self.flight_info.keys() or self.overwrite:
             self.flight_info["battery_voltage_final"] = self.no_commas(
-                "Battery voltage: Enter only the battery voltage in volts without units.")
-            print("Enter landing time as 24-hr UTC HHMM")
-            self.flight_info["land_time"] = self.get_time(self.dt_today)
+                "Battery voltage: Enter only the battery voltage in "
+                "volts without units.")
+            print("Enter landing time as 24-hr UTC HHMM.")
+            self.flight_info["land_time_utc"] = self.get_time(self.dt_today)
+            self.flight_info["max_achieved_alt"] = \
+                self.no_commas("Enter maximum altitude achieved in meters.")
 
     def emergency(self):
         if "emergency_landing" not in self.flight_info.keys() or self.overwrite:
-            emergency = self.no_commas("---Emergency landing required? y/n---\n"
-                                  "This includes landing for airspace incursion purposes,\n"
-                                  "critical battery RTL, or loss of control of aircraft. If yes,\n"
-                                  "please fill out proper documentation in the CASS Google Drive folder.\n"
-                                  "Also be sure to denote in remarks.")
+            emergency = \
+                self.no_commas("---Emergency landing required? y/n---\n"
+                               "This includes landing for airspace incursion "
+                               "purposes,\n"
+                               "critical battery RTL, or loss of control of "
+                               "aircraft. If yes,\n"
+                               "please fill out proper documentation in the "
+                               "CASS Google Drive folder.\n"
+                               "Also be sure to denote in remarks.")
             while emergency not in ["y", "n"]:
                 emergency = input(">> ")
 
             if emergency == "y":
                 print("---EMERGENCY CAUSED BY VISUAL AND FLIGHT CONDITION---")
-                print("If Flight conditions turned unsafe (wind excess, sudden fog or rain, lost sight or communication)")
-                print("or Mission planner shows out of range parameters, perform the following:")
+                print("If Flight conditions turned unsafe (wind excess, sudden "
+                      "fog or rain, lost sight or communication)")
+                print("or Mission planner shows out of range parameters, "
+                      "perform the following:")
                 print("-Trigger RTL mode")
                 print("-Confirm safe landing and shut off")
                 print("")
                 print("---EMERGENCY CAUSED BY GPS ERRORS---")
-                print("If Mission planners shows GPS errors, DO NOT TRIGGER RTL. Perform the following:")
+                print("If Mission planners shows GPS errors, DO NOT TRIGGER "
+                      "RTL. Perform the following:")
                 print("-Change to stabilize mode")
                 print("-Return to base by pilot's flight skills")
                 print("-Confirm safe landing and shut off")
                 print("")
-                error_str = self.no_commas("Take note of error messages in mission planner and what triggered emergency:")
+                error_str = self.no_commas("Take note of error messages in "
+                                           "mission planner and what triggered "
+                                           "emergency:")
                 print("Continuing with post-flight checklist.")
             else:
                 error_str = ""
@@ -409,9 +449,12 @@ class Checklist(UI):
         print("Finished with post_landing checklist.")
 
     def comment(self):
-        if "private_remarks" in self.flight_info.keys() or self.overwrite:
-            self.flight_info["private_remarks"] = self.no_commas("Additional remarks or comments (for CASS only):")
-            self.flight_info["remarks"] = self.no_commas("Additional remarks or comments:")
+        if "private_remarks" not in self.flight_info.keys() or self.overwrite:
+            self.flight_info["private_remarks"] = \
+                self.no_commas("Additional remarks or "
+                               "comments (for CASS only):")
+            self.flight_info["remarks"] = \
+                self.no_commas("Additional remarks or comments:")
 
     def nextcloud(self):
 
@@ -425,7 +468,8 @@ class Checklist(UI):
         # Header
         #
         if self.is_first:
-            f_header = f"{self.flight_info['timestamp']}" + self.flight_info["platform_id"] + "_log_header.csv"
+            f_header = f"{self.flight_info['timestamp']}" + \
+                       self.flight_info["platform_id"] + "_log_header.csv"
             f_header_path = os.path.join(self.log_dir, f_header)
             headers = ("timestamp", "operator", "location_id", "location_name",
                          "surface_altitude", "mesonet_id", "region",
@@ -434,9 +478,9 @@ class Checklist(UI):
             fw = open(f_header_path, "w")
             writer = csv.writer(fw, delimiter=",")
             writer.writerow(headers)
-            data = ("", "", "", "", "", "", "", "", "", "", "", "")
+            data = []
             for i in range(len(headers)):
-                data[i] = self.flight_info[headers[i]]
+                data.append(self.flight_info[headers[i]])
             writer.writerow(data)
             fw.close()
 
@@ -448,14 +492,15 @@ class Checklist(UI):
                    self.flight_info["platform_id"] + "_flight_log.csv"
         f_flight_path = os.path.join(self.log_dir, f_flight)
 
-        headers = ("timestamp", "operator", "PIC", "battery_id", "cloud", "rain",
-                   "battery_voltage_initial", "max_planned_alt", "launch_time_utc",
-                   "max_achieved_alt", "land_time_utc", "battery_voltage_final",
-                   "emergency_landing", "emergency_remarks", "private_remarks", "remarks")
+        headers = ("timestamp", "operator", "PIC", "battery_id", "cloud",
+                   "rain", "battery_voltage_initial", "max_planned_alt",
+                   "launch_time_utc", "max_achieved_alt", "land_time_utc",
+                   "battery_voltage_final", "emergency_landing",
+                   "emergency_remarks", "private_remarks", "remarks")
 
-        data = ("","","","","","","","","","","","","","","")
+        data = []
         for i in range(len(headers)):
-            data[i] = self.flight_info[headers[i]]
+            data.append(self.flight_info[headers[i]])
         fw = open(f_flight_path, "w")
         writer = csv.writer(fw, delimiter=",")
         writer.writerow(headers)
@@ -466,8 +511,9 @@ class Checklist(UI):
         if not self.localNextcloud:
             is_done = input("Is this your last flight?\n>>")
             if is_done.capitalize() in "YES":
-                print("Copy this link into your browser and upload the contents of " +
-                      os.path.join(os.path.abspath("."), "Logs")
+                print("Copy this link into your browser and upload the "
+                      "contents of " +
+                      os.path.join(os.path.abspath(".."), "Logs")
                       + ":\n https://10.197.13.220/s/qXjandWWu26v4hO")
 
 Checklist()

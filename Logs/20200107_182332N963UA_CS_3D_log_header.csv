@@ -1,0 +1,2 @@
+timestamp,operator,location_id,location_name,surface_altitude,mesonet_id,region,pilots_on_site,objective,authorization_type,platform_id,scoop_id
+20200107_182332,Test Operator,ARRC,RIL,344.7,NRMN,contiguous_united_states,,Thermo; Wind calibration,Part 107,N963UA_CS_3D,A
