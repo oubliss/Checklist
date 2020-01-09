@@ -41,7 +41,7 @@ class UI:
             self.to_do.pop(-1)
             raise ExitException
 
-    def get_index(self, list, message=None, free_response=True):
+    def get_index(self, list, message=None, free_response=True, multiple=False):
         """ Recursively call until valid index chosen from specified array
         """
         if message is not None:
@@ -52,8 +52,17 @@ class UI:
         if free_response:
             print("\t" + str(len(list)+1) + " - Other")
         i_str = input(">> ")
-        if i_str in [str(i) for i in range(1, len(list) + 1, 1)]:
-            to_return = list[int(i_str) - 1]
+        if i_str in [str(i) for i in range(1, len(list) + 1, 1)] or multiple:
+            if multiple:
+                elems = i_str.split(";")
+                to_return = ''
+                for i in range(len(elems)):
+                    to_return = to_return + list[int(elems[i]) - 1] + "; "
+
+                to_return = to_return[:-2]
+
+            else:
+                to_return = list[int(i_str) - 1]
         elif i_str == str(len(list) + 1):
             if free_response:
                 to_return = self.no_commas(message)
@@ -339,7 +348,9 @@ class Checklist(UI):
             obj_list = pickle.load(open(objectives_path, "rb"))
             for obj in obj_list:
                 print(obj)
-            self.flight_info["objective"] = self.no_commas("Objective(s): ")
+            self.flight_info["objective"] = \
+                self.get_index(obj_list, message="Objective(s): ",
+                               multiple=True)
 
     def legal(self):
         if "authorization_type" not in self.flight_info.keys() \
@@ -452,7 +463,6 @@ class Checklist(UI):
         print("Finished with pre-takeoff checklist.")
 
     def start_info(self):
-        # TODO clean known_locations, ndict
         # launch time, battery num, voltage
         if "launch_time" not in self.flight_info.keys() or self.overwrite:
 
