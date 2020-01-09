@@ -2,7 +2,7 @@
 Routine to run on local ground station for CASS flights
 Saves txt files for aircraft information (header) and each individual flight
 Written by: Jessica Blunt
-Updated: December 2019
+Updated: January 2020
 Based on code by Brian Greene, November 2019
 Center for Autonomous Sensing and Sampling
 University of Oklahoma
@@ -17,6 +17,11 @@ from contextlib import suppress
 import numpy as np
 import pickle
 
+
+dirname = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ndict_path = os.path.join(dirname, "user_settings", "ndict.pkl")
+locations_path = os.path.join(dirname, "user_settings", "known_locations.pkl")
+objectives_path = os.path.join(dirname, "user_settings", "objectives.pkl")
 
 class ExitException(BaseException):
     def __init__(self):
@@ -89,9 +94,9 @@ class Checklist(UI):
         # Load existing data
         #
         super()
-        self.ndict = pickle.load(open("../user_settings/ndict.pkl", "rb"))
+        self.ndict = pickle.load(open(ndict_path, "rb"))
         self.known_locations = \
-            pickle.load(open("../user_settings/known_locations.pkl", "rb"))
+            pickle.load(open(locations_path, "rb"))
 
         #
         # Get needed system info
@@ -107,7 +112,7 @@ class Checklist(UI):
                 os.mkdir(self.log_dir)
         except FileNotFoundError:
             self.localNextcloud = False
-            self.log_dir = os.path.join("..", "Logs")
+            self.log_dir = os.path.join(dirname, "Logs")
             if not os.path.exists(self.log_dir):
                 os.mkdir(self.log_dir)
 
@@ -216,7 +221,7 @@ class Checklist(UI):
                  "lon": lon, "surface_altitude": alt,
                  "region": region, "mesonet_id": mesonet_id}
             pickle.dump(self.known_locations,
-                        open("../user_settings/known_locations.pkl", "wb"))
+                        open(locations_path, "wb"))
 
             loc_info = {"location_name": long_name, "lat": lat, "lon": lon,
                         "surface_altitude": alt,
@@ -240,7 +245,8 @@ class Checklist(UI):
 
     def find_header(self):
         # TODO check if overwrite
-        self.is_first = self.no_commas("Is this your first flight today? y/n")
+        self.is_first = self.no_commas("Is this your first flight today with "
+                                       "this UAV and authorization type? y/n")
         while self.is_first.lower() not in ["y", "n"]:
             self.is_first = self.no_commas("Enter y or n")
         if self.is_first in "y":
@@ -322,8 +328,7 @@ class Checklist(UI):
         if "objective" not in self.flight_info.keys() or self.overwrite:
             print("Chose one or more of the following objectives. If\n"
                   "you chose more than one, separate them with \";\"")
-            obj_list = pickle.load(open("../user_settings/objectives.pkl",
-                                        "rb"))
+            obj_list = pickle.load(open(objectives_path, "rb"))
             for obj in obj_list:
                 print(obj)
             self.flight_info["objective"] = self.no_commas("Objective(s): ")
@@ -617,7 +622,7 @@ class Admin(UI):
         self.to_do.append(options[option])
 
     def platforms_add(self):
-        old_dict = pickle.load(open("ndict.pkl", "rb"))
+        old_dict = pickle.load(open(ndict_path, "rb"))
         print(list(old_dict.keys()))
         add = self.no_commas("Is your platform in this list? (y/n)")
         while add.lower() not in ["y", "n"]:
@@ -638,22 +643,22 @@ class Admin(UI):
             scoop = False
 
         old_dict[name] = scoop
-        pickle.dump(old_dict, open("ndict.pkl", "wb"))
+        pickle.dump(old_dict, open(ndict_path, "wb"))
         print("Platform " + name + " has been added.")
         self.back()
 
     def platforms_remove(self):
-        old_dict = pickle.load(open("ndict.pkl", "rb"))
+        old_dict = pickle.load(open(ndict_path, "rb"))
         to_remove = self.get_index(list(old_dict.keys()),
                                    message="Which platform would you like to "
                                            "remove?", free_response=False)
         old_dict.pop(to_remove)
-        pickle.dump(old_dict, open("ndict.pkl", "wb"))
+        pickle.dump(old_dict, open(ndict_path, "wb"))
         print("Platform " + to_remove + " has been removed.")
         self.back()
 
     def platforms_reorder(self):
-        old_dict = pickle.load(open("ndict.pkl", "rb"))
+        old_dict = pickle.load(open(ndict_path, "rb"))
         keys = list(old_dict.keys())
         print("Here is the current order of the platforms: ")
         for i in range(len(keys)):
@@ -671,7 +676,7 @@ class Admin(UI):
 
             new_dict[keys[next_elem-1]] = old_dict.pop(keys[next_elem-1])
 
-        pickle.dump(new_dict, open('ndict.pkl', 'wb'))
+        pickle.dump(new_dict, open(ndict_path, 'wb'))
         self.back()
 
     def groups(self):
@@ -683,19 +688,19 @@ class Admin(UI):
         self.to_do.append(options[option])
 
     def groups_remove(self):
-        old_dict = pickle.load(open("known_locations.pkl", "rb"))
+        old_dict = pickle.load(open(locations_path, "rb"))
         message = "Which set of locations would you like to remove?\n" \
                   "WARNING: ALL DATA STORED WITHIN THIS AREA WILL BE " \
                   "PERMANENTLY DELETED!"
         option = self.get_index(list(old_dict.keys()), message=message,
                                 free_response=False)
         old_dict.pop(option)
-        pickle.dump(old_dict, open("known_locations.pkl", "wb"))
+        pickle.dump(old_dict, open(locations_path, "wb"))
         print("All locations in " + option + " have been deleted.")
         self.back()
 
     def groups_reorder(self):
-        old_dict = pickle.load(open("known_locations.pkl", "rb"))
+        old_dict = pickle.load(open(locations_path, "rb"))
         keys = list(old_dict.keys())
         print("Here is the current order of the location groups: ")
         for i in range(len(keys)):
@@ -713,7 +718,7 @@ class Admin(UI):
 
             new_dict[keys[next_elem - 1]] = old_dict.pop(keys[next_elem - 1])
 
-        pickle.dump(new_dict, open('known_locations.pkl', 'wb'))
+        pickle.dump(new_dict, open(locations_path, 'wb'))
         self.back()
 
     def locations(self):
@@ -726,7 +731,7 @@ class Admin(UI):
         self.to_do.append(options[option])
 
     def locations_add(self):
-        old_dict = pickle.load(open("known_locations.pkl", "rb"))
+        old_dict = pickle.load(open(locations_path, "rb"))
         group = self.get_index(list(old_dict.keys()), message="What country or"
                                                               " US state are "
                                                               "you in?")
@@ -766,12 +771,12 @@ class Admin(UI):
              "lon": lon, "surface_altitude": alt,
              "region": region, "mesonet_id": mesonet_id}
 
-        pickle.dump(old_dict, open("known_locations.pkl", "wb"))
+        pickle.dump(old_dict, open(locations_path, "wb"))
         print(long_name + " has been added to the list of known locations.")
         self.back()
 
     def locations_remove(self):
-        old_dict = pickle.load(open("known_locations.pkl", "rb"))
+        old_dict = pickle.load(open(locations_path, "rb"))
         group = self.get_index(list(old_dict.keys()),
                                message="Where is the location you want to "
                                        "delete?", free_response=False)
@@ -789,12 +794,12 @@ class Admin(UI):
             if del_group in "Yesyes":
                 old_dict.pop(group)
 
-        pickle.dump(old_dict, open("known_locations.pkl", "wb"))
+        pickle.dump(old_dict, open(locations_path, "wb"))
         print(loc + " has been removed from the list of saved locations.")
         self.back()
 
     def locations_reorder(self):
-        old_dict = pickle.load(open("known_locations.pkl", "rb"))
+        old_dict = pickle.load(open(locations_path, "rb"))
         keys = list(old_dict.keys())
         group = self.get_index(keys, message="Which set of locations would you "
                                              "like to reorder?",
@@ -817,7 +822,7 @@ class Admin(UI):
             new_sub_dict[keys[next_elem - 1]] = old_dict[group].pop(keys[next_elem - 1])
 
         old_dict[group] = new_sub_dict
-        pickle.dump(old_dict, open('known_locations.pkl', 'wb'))
+        pickle.dump(old_dict, open(locations_path, 'wb'))
         self.back()
 
     def objectives(self):
@@ -830,7 +835,7 @@ class Admin(UI):
         self.to_do.append(options[option])
 
     def objectives_add(self):
-        objectives = pickle.load(open("objectives.pkl", "rb"))
+        objectives = pickle.load(open(objectives_path, "rb"))
         print(objectives)
         add = self.no_commas("Is your objective in this list? (y/n)")
         while add.lower() not in ["y", "n"]:
@@ -842,22 +847,22 @@ class Admin(UI):
         new_objective = self.no_commas("What is the name of the objective you'd"
                                        " like to add?")
         objectives.append(new_objective)
-        pickle.dump(objectives, open("objectives.pkl", "wb"))
+        pickle.dump(objectives, open(objectives_path, "wb"))
         print(new_objective + " has been added to the saved objectives.")
         self.back()
 
     def objectives_remove(self):
-        objectives = pickle.load(open("objectives.pkl", "rb"))
+        objectives = pickle.load(open(objectives_path, "rb"))
         to_remove = self.get_index(objectives, free_response=False,
                                    message="Which item would you like to "
                                            "remove?")
         objectives.remove(to_remove)
-        pickle.dump(objectives, open("objectives.pkl", "wb"))
+        pickle.dump(objectives, open(objectives_path, "wb"))
         print(to_remove + " has been removed from the list of objectives.")
         self.back()
 
     def objectives_reorder(self):
-        objectives = pickle.load(open("objectives.pkl", "rb"))
+        objectives = pickle.load(open(objectives_path, "rb"))
         print("Here is the current order of the objectives: ")
         for i in range(len(objectives)):
             print(str(i + 1), objectives[i])
@@ -876,7 +881,7 @@ class Admin(UI):
             new_order.append(objectives[next_elem - 1])
             remaining.remove(objectives[next_elem - 1])
 
-        pickle.dump(new_order, open('objectives.pkl', 'wb'))
+        pickle.dump(new_order, open(objectives_path, 'wb'))
         self.back()
 
     # TODO How to update installed version without messing up the pkl files?
@@ -884,3 +889,5 @@ class Admin(UI):
 
 def run():
     Checklist()
+
+run()
