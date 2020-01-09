@@ -233,7 +233,6 @@ class Checklist(UI):
         for key in loc_info.keys():
             self.flight_info[key] = loc_info[key]
 
-
     def operator(self):
         if "operator" not in self.flight_info or self.overwrite:
             inp = self.no_commas("Name of person filling out checklist: ")
@@ -244,7 +243,7 @@ class Checklist(UI):
                 self.flight_info["operator"] = inp
 
     def find_header(self):
-        # TODO check if overwrite
+
         self.is_first = self.no_commas("Is this your first flight today with "
                                        "this UAV and authorization type? y/n")
         while self.is_first.lower() not in ["y", "n"]:
@@ -254,29 +253,37 @@ class Checklist(UI):
             return
         else:
             self.is_first = False
-        # find associated header file
-        f_read = f"{self.dt_today.strftime('%Y%m%d')}" + \
-                 self.flight_info["platform_id"] + "_log_header.csv"
-        is_header = self.no_commas("Is this the correct header file? y/n\n"
-                                   + f_read)
-        while is_header not in ["y", "n"]:
-            is_header = input(">> ")
-        if is_header == "y":
-            f_read_path = os.path.join(self.log_dir, f_read)
-        else:
-            while True:
-                print("Please input the file name to the header file")
-                f_in = input(">> ")
-                try:
-                    f_read_path = os.path.join(self.log_dir, f_in)
-                except FileNotFoundError:
-                    print("That file could not be found.")
-                    continue
-                break
 
-        header = np.genfromtxt(f_read_path, dtype=str, delimiter=",",
-                               skip_header=1)
-        # TODO make header a dictionary accessible elsewhere
+        #
+        # find associated header file
+        #
+        possible_headers = []
+        for file in os.listdir(self.log_dir):
+            if self.dt_today.strftime('%Y%m%d') in file \
+               and self.flight_info["platform_id"] in file \
+               and "log_header.csv" in file \
+               and "." not in file[0]:
+                possible_headers.append(file)
+
+        if len(possible_headers) < 1:
+            print("No header files found. User will be prompted for required "
+                  "information.")
+            self.is_first = True
+            return
+        elif len(possible_headers) == 1:
+            header_path = os.path.join(self.log_dir, possible_headers[0])
+        else:
+            header_path = \
+                os.path.join(self.log_dir,
+                             self.get_index(possible_headers,
+                                            message="Which header file should "
+                                                    "be used?",
+                                            free_response=False))
+
+        header = next(csv.DictReader(open(header_path, newline='')))
+
+        for key in header.keys():
+            self.flight_info[key] = header[key]
 
     def platform(self):
         """ Prompt user for platform ID
@@ -293,26 +300,27 @@ class Checklist(UI):
     def location(self):
         """ Ask user for location from list
         """
-        loc_keys = list(self.known_locations.keys())
+        if "location_id" not in self.flight_info.keys() or self.overwrite:
+            loc_keys = list(self.known_locations.keys())
 
-        # Find location group (state or country)
-        print("Where are you?")
-        group = self.get_index(loc_keys,
-                               "What state (US) or country are you in?")
+            # Find location group (state or country)
+            print("Where are you?")
+            group = self.get_index(loc_keys,
+                                   "What state (US) or country are you in?")
 
-        if group not in self.known_locations.keys():
-            self.define_new_loc(group)
+            if group not in self.known_locations.keys():
+                self.define_new_loc(group)
 
-        specific_loc_keys = list(self.known_locations[group].keys())
-        print("Which location?")
-        location_id = self.get_index(specific_loc_keys, free_response=False)
-        if location_id in "Other":
-            self.define_new_loc(group)
-        else:
-            loc_info = self.known_locations[group][location_id]
-            self.flight_info["location_id"] = location_id
-            for key in loc_info.keys():
-                self.flight_info[key] = loc_info[key]
+            specific_loc_keys = list(self.known_locations[group].keys())
+            print("Which location?")
+            location_id = self.get_index(specific_loc_keys, free_response=False)
+            if location_id in "Other":
+                self.define_new_loc(group)
+            else:
+                loc_info = self.known_locations[group][location_id]
+                self.flight_info["location_id"] = location_id
+                for key in loc_info.keys():
+                    self.flight_info[key] = loc_info[key]
 
     def flight_pattern(self):
 
@@ -346,6 +354,8 @@ class Checklist(UI):
                                    "by \";\"")
             else:
                 self.flight_info["pilots_on_site"] = ""
+        if "PIC" not in self.flight_info.keys() \
+                or self.overwrite:
             self.flight_info["PIC"] = self.no_commas("Pilot in Command: ")
 
     def scoop(self):
