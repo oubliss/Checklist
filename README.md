@@ -1,6 +1,9 @@
 # Checklist
 Checklist for flight safety and metadata logs compatible with oucass-profiles.
 
+To run, simply ensure that click is installed and type the command "checklist"
+into the terminal.
+
 Safety checks include
 * Check for visual obstacles and potential source of interference
 * Clear and agree on a takeoff and landing zone
