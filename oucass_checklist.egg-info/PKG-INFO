@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: oucass-checklist
-Version: 0.2.1
+Version: 0.3.0
 Summary: Program to manage safety checks and create metadata files compatible with oucass-profiles in the field
 Home-page: https://github.com/oucass/Checklist
 Author: Jessica Blunt, Brian Greene
@@ -57,6 +57,11 @@ Description: # Checklist
         * Launch and land times (in UTC)
         * Emergency documentation
         * Private and public remarks
+        
+        Use Admin mode to
+        * add, remove, or reorder saved platforms
+        * add, remove, or reorder saved locations
+        * add, remove, or reorder saved objectives
         
         
 Platform: UNKNOWN

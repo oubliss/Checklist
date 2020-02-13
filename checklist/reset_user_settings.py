@@ -73,8 +73,7 @@ objectives = ['Thermo',
  'Photogrammetry',
  'O3',
  'Aerosol',
- 'Test',
- 'Tester']
+ 'Test']
 
 import os
 print(os.getcwd())

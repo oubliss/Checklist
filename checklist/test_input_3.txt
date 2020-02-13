@@ -1,15 +1,4 @@
-Test Operator
 1
-y
-1
-1
-1
-1;2
-2
-Test Pilot
-1
-1
-1000
 
 
 
@@ -35,9 +24,22 @@ Test Pilot
 
 unknown
 1234
+
+
+
+
+
+
+
+
+
+
+
+
+1234
+
 1234
 1234
-1243
 n
 n
 
@@ -50,14 +52,3 @@ n
 
 
 
-
-
-
-
-
-
-
-
-
-
-fasdjfhadsfjk

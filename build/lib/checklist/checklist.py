@@ -16,7 +16,21 @@ import datetime as dt
 from datetime import datetime
 from contextlib import suppress
 import pickle
+import logging
+import json
 
+
+# First see if backup.log exists
+if "backup.log" in os.listdir():
+    # Is the file complete?
+    if "DONE" in open("backup.log").readline():
+        os.remove("backup.log")
+    # If the file is incomplete, handle in checklist.resume()
+# If the file does not exist, nothing needs to be done here
+
+
+logging.basicConfig(filename="backup.log", level=0)
+backup = logging.getLogger("backup")
 
 class ExitException(BaseException):
     def __init__(self):
@@ -49,8 +63,7 @@ class UI:
 
         for i in range(len(list)):
             print("\t" + str(i+1) + " - " + str(list[i]))
-        if free_response:
-            print("\t" + str(len(list)+1) + " - Other")
+        print("\t" + str(len(list)+1) + " - Other")
         i_str = input(">> ")
         if i_str in [str(i) for i in range(1, len(list) + 1, 1)] or multiple:
             if multiple and "!" not in i_str:
@@ -151,15 +164,24 @@ class Checklist(UI):
         self.flight_info = {}
         self.is_first = False
 
+        # Check if a previous run was left incomplete
+        self.recover()
+
         # start the process...
         while self.step_index < len(self.to_do):
             with suppress(ExitException):
                 self.step()
 
+        # Finish
+        backup.info("DONE")
+        logging.shutdown()
+        os.remove("backup.log")
+
     def step(self):
         self.__getattribute__(self.to_do[self.step_index])()
         self.step_index += 1
         self.overwrite = False
+        backup.info(str(self.step_index) + " --- " + str(self.flight_info))
 
     def get_time(self, date):
         time_str = input(">> ")
@@ -391,7 +413,7 @@ class Checklist(UI):
                 r = self.no_commas("Is it precipitating? If yes be sure to "
                                    "denote type in remarks. y/n")
                 while r not in ["y", "n"]:
-                    r = input(">> ")
+                    r = self.no_commas("Enter y or n")
                 if r == "y":
                     rain = "yes"
                 else:
@@ -419,73 +441,116 @@ class Checklist(UI):
         if "max_planned_alt" not in self.flight_info or self.overwrite:
             self.flight_info["max_planned_alt"] = self.no_commas("Planned "
                                                                  "maximum "
-                                                                 "altitude: ")
+                                                                 "altitude in "
+                                                                 "meters AGL: ")
 
     def preflight_checks(self):
-        checklist = [
-            "Check for visual obstacles and potential source of "
-            "interference (antennas, \n"
-                "electrical lines, metal structures) ",
-            "Clear and agree on a takeoff and landing zone ",
-            "Check current wind speed and humidity at the location, decide "
-            "if it's \n"
-                "appropriate for safe flight ",
-            "Perform visual inspection of the vehicle - props not damaged, "
-            "props tight, \n"
-                "center of gravity, orientation and connection of RH, GPS, "
-            "data transfer \n"
-                "antennas, mechanical check ",
-            "Check Mission planner laptop battery charge ",
-            "Confirm mission planner running ",
-            "Connect ground station RF to laptop ",
-            "Turn on controller and check voltage ",
-            "Plug in the UAV's battery and let it boot up stationary for 20 "
-            "seconds ",
-            "Connect telemetry (baud 57600, select serial link, confirm "
-            "heartbeat) ",
-            "Confirm no error messages with mission planner ",
-            "Confirm GPS fix type (outdoors must get 3D fix) ",
-            "Check data logging ",
-            "Place vehicle at launch point",
-            "Check flight mode on controller",
-            "Confirm data logging software running",
-            "Check sensors are in correct range",
-            "Review flight plan - verbal and on mission planner",
-            "Test audio communications among participants",
-            "Check if all participants ready for flight",
-            "Press the safety button on the vehicle until solid red - now "
-            "live and armed",
-            "Check the LED for status of the vehicle. Should see a blinking "
-            "green light indicating GPS lock",
-            "Arm motors and call clear prop"
-        ]
+        if self.is_first:
+            checklist = [
+                "Check for visual obstacles and potential source of "
+                "interference (antennas, electrical lines, metal structures) ",
+                "Clear and agree on a takeoff and landing zone ",
+                "Check current wind speed and humidity at the location, decide "
+                "if flight safe",
+                "Perform visual inspection of the vehicle - props not damaged, "
+                "props tight, \ncenter of gravity, orientation and connection "
+                "of RH, GPS, data transfer antennas, \nmechanical check ",
+                "Check Mission Planner laptop battery charge ",
+                "Turn on controller and check voltage ",
+                "Confirm a fresh battery is on the UAS",
+                "Plug in the UAV's battery and let it boot up stationary for "
+                "20 seconds ",
+                "Launch CASS live data streaming software",
+                "Confirm real-time plotter is running and data is showing up "
+                "and in correct range",
+                "Run Mission Planner",
+                "Connect telemetry (TCP connection, confirm heartbeat) ",
+                "Confirm no error messages with Mission Planner ",
+                "BATTERY",
+                "Confirm GPS fix type (outdoors must get 3D fix) ",
+                "Check flight data logging in Mission Planner",
+                "Place vehicle at launch point",
+                "Based on the weather conditions, agree on a flight pattern "
+                "and maximum safe altitude",
+                "Create the waypoints mission on Mission Planner and send it "
+                "to the UAS",
+                "Check flight mode on controller",
+                "Review flight plan - verbal and on Mission Planner",
+                "Test audio communications among participants",
+                "Check if all participants ready for flight",
+                "Press the safety button on the vehicle until solid red - now "
+                "live and armed",
+                "Check the LED for status of the vehicle. Should see a "
+                "blinking green light indicating GPS lock",
+                "Arm motors, call clear props, and proceed to execute "
+                "the mission"]
+        else:
+            checklist = [
+                "Check current wind speed and humidity at the location, "
+                "decide if flight safe",
+                "Perform visual inspection of the vehicle - props not damaged, "
+                "props tight, \ncenter of gravity, orientation and connection of "
+                "RH, GPS, data transfer antennas, \nmechanical check ",
+                "Check Mission planner laptop battery charge ",
+                "Turn on controller and check voltage ",
+                "Confirm a fresh battery is on the UAS",
+                "Plug in the UAV's battery and let it boot up stationary "
+                "for 20 seconds ",
+                "Launch CASS live data streaming software",
+                "Confirm real-time plotter is running and data is showing up "
+                "and in correct range",
+                "Run Mission Planner",
+                "Connect telemetry (TCP connection, confirm heartbeat) ",
+                "Confirm no error messages with Mission Planner ",
+                "BATTERY",
+                "Confirm GPS fix type (outdoors must get 3D fix) ",
+                "Check flight data logging in Mission Planner",
+                "Place vehicle at launch point",
+                "Check flight mode on controller",
+                "Review flight plan - verbal and on Mission Planner",
+                "Test audio communications among participants",
+                "Check if all participants ready for flight",
+                "Press the safety button on the vehicle until solid red - now"
+                " live and armed",
+                "Check the LED for status of the vehicle. Should see a "
+                "blinking green light indicating GPS lock",
+                "Arm motors, call clear prop and proceed to execute the mission"
+            ]
         for i in range(len(checklist)):
-            print("\n")
-            input(f">>{checklist[i]}")
+            if checklist[i] in "BATTERY":
+                self.battery()
+            else:
+                print("\n")
+                input(f">> {checklist[i]}")
 
-        print("Finished with pre-takeoff checklist.")
-
-    def start_info(self):
+    def battery(self):
         # launch time, battery num, voltage
         if "launch_time" not in self.flight_info.keys() or self.overwrite:
 
             self.flight_info["battery_id"] = \
-                self.no_commas("Battery number (enter unknown if unknown)")
+                self.no_commas("\n\n>> Battery number (enter unknown if unknown)")
             self.flight_info["battery_voltage_initial"] = self.no_commas(
-                "Battery voltage: Enter only the battery voltage in volts "
-                "without units.")
-            print("Enter takeoff time as 24-hr UTC HHMM")
-            self.flight_info["launch_time_utc"] = self.get_time(self.dt_today)
+                "Battery voltage: Enter only the battery voltage before takeoff"
+                " in volts without units.")
+
+    def start_info(self):
+        print("\n\nEnter takeoff time as 24-hr UTC HHMM")
+        self.flight_info["launch_time_utc"] = self.get_time(self.dt_today)
+
+        print("Finished with pre-takeoff checklist.\n\n"
+              "----------------------------------------\n"
+              "------------------FLIGHT----------------\n"
+              "----------------------------------------\n\n")
 
     def end_info(self):
         if "max_achieved_alt" not in self.flight_info.keys() or self.overwrite:
             self.flight_info["battery_voltage_final"] = self.no_commas(
-                "Battery voltage: Enter only the battery voltage in "
-                "volts without units.")
+                "Battery voltage: Enter only the battery voltage after landing "
+                "in volts without units.")
             print("Enter landing time as 24-hr UTC HHMM.")
             self.flight_info["land_time_utc"] = self.get_time(self.dt_today)
             self.flight_info["max_achieved_alt"] = \
-                self.no_commas("Enter maximum altitude achieved in meters.")
+                self.no_commas("Enter maximum altitude achieved in meters AGL.")
 
     def emergency(self):
         if "emergency_landing" not in self.flight_info.keys() or self.overwrite:
@@ -494,12 +559,9 @@ class Checklist(UI):
                                "This includes landing for airspace incursion "
                                "purposes,\n"
                                "critical battery RTL, or loss of control of "
-                               "aircraft. If yes,\n"
-                               "please fill out proper documentation in the "
-                               "CASS Google Drive folder.\n"
-                               "Also be sure to denote in remarks.")
+                               "aircraft.")
             while emergency not in ["y", "n"]:
-                emergency = input(">> ")
+                emergency = self.no_commas("Enter y or n")
 
             if emergency == "y":
                 print("---EMERGENCY CAUSED BY VISUAL AND FLIGHT CONDITION---")
@@ -518,7 +580,7 @@ class Checklist(UI):
                 print("-Confirm safe landing and shut off")
                 print("")
                 error_str = self.no_commas("Take note of error messages in "
-                                           "mission planner and what triggered "
+                                           "Mission Planner and what triggered "
                                            "emergency:")
                 print("Continuing with post-flight checklist.")
             else:
@@ -535,9 +597,9 @@ class Checklist(UI):
                      "Inspect vehicle"]
         for i in range(len(checklist)):
             print("\n")
-            input(f">>{checklist[i]}")
+            input(f">> {checklist[i]}")
 
-        print("Finished with post_landing checklist.")
+        print("\n\nFinished with post_landing checklist.\n")
 
     def comment(self):
         if "private_remarks" not in self.flight_info.keys() or self.overwrite:
@@ -546,6 +608,28 @@ class Checklist(UI):
                                "comments (for CASS only):")
             self.flight_info["remarks"] = \
                 self.no_commas("Additional remarks or comments:")
+
+    def recover(self):
+        backupfile = open("backup.log", "r")
+        try:
+            last_status = backupfile.readlines()[-1]
+        except IndexError:
+            return
+        backupfile.close()
+        inp = input("A recovery file has been found for a checklist that was "
+                    "not completed. Would you like to \n1) Resume, or "
+                    "\n2) Start over?\n>> ")
+        while inp not in "12":
+            inp = input("Please enter \'1\' or \'2\':\n>> ")
+        if inp in "2":
+            return
+
+        self.flight_info = \
+            json.loads(last_status[last_status.index("{"):].replace("\'", "\""))
+        self.step_index = \
+            int(last_status[len("INFO:backup:"):last_status.index(" ")])
+        print("Checklist recovery sucessful! Resuming where you left off...")
+        self.step()
 
     def nextcloud(self):
 

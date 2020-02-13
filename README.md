@@ -50,3 +50,8 @@ Metadata logs include
 * Emergency documentation
 * Private and public remarks
 
+Use Admin mode to
+* add, remove, or reorder saved platforms
+* add, remove, or reorder saved locations
+* add, remove, or reorder saved objectives
+
