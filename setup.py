@@ -22,7 +22,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="oucass-checklist",
-    version="0.2.1",
+    version="0.3.0",
     author="Jessica Blunt, Brian Greene",
     author_email="cass@ou.edu",
     description="Program to manage safety checks and create metadata files compatible with oucass-profiles in the field",
