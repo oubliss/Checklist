@@ -41,7 +41,6 @@ class UI:
 
     def __init__(self):
         self.dirname = os.path.dirname(__file__)
-        print("DIR IS " + self.dirname)
         self.ndict_path = os.path.join(self.dirname, "user_settings", "ndict.pkl")
         self.locations_path = os.path.join(self.dirname, "user_settings", "known_locations.pkl")
         self.objectives_path = os.path.join(self.dirname, "user_settings", "objectives.pkl")
@@ -99,8 +98,12 @@ class UI:
             print("Please enter valid name with no commas")
             x = self.no_commas(message)
         if "!" in x:
-            self.back()
-            raise ExitException()
+            try:
+                self.back()
+                raise ExitException()
+            except Exception:
+                print("The \"!\" option is not available right now")
+                x = self.no_commas(message)
         if "remarks" not in message and "Remarks" not in message:
             while x in "":
                 print("This field is non-optional")
@@ -290,6 +293,7 @@ class Checklist(UI):
         #
         possible_headers = []
         for file in os.listdir(self.log_dir):
+            print("Checking if " + file + " could be the header...")
             if self.dt_today.strftime('%Y%m%d') in file \
                and self.flight_info["platform_id"] in file \
                and "log_header.csv" in file \
@@ -371,8 +375,6 @@ class Checklist(UI):
             print("Chose one or more of the following objectives. If\n"
                   "you chose more than one, separate them with \";\"")
             obj_list = pickle.load(open(self.objectives_path, "rb"))
-            for obj in obj_list:
-                print(obj)
             self.flight_info["objective"] = \
                 self.get_index(obj_list, message="Objective(s): ",
                                multiple=True)

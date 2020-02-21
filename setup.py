@@ -39,6 +39,7 @@ setuptools.setup(
         [console_scripts]
         checklist=checklist.checklist:cli
     ''',
+    install_requires=["click"],
     python_requires='>=3.7',
     package_data={"checklist":["user_settings/*.pkl"]},
     include_package_data=True,
